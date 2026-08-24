@@ -86,6 +86,45 @@ const defaultState = {
   stickyHeader: false,
   dojobest: 0,
   goldenclicks: 0,
+  ritualcandle: 0,
+  ritualcandlecost: 6000,
+  ritualcircle: 0,
+  ritualcirclecost: 15000,
+  ritualmask: 0,
+  ritualmaskcost: 3000,
+  supplychain: 0,
+  supplychaincost: 40000,
+  supplychainmaxtier: 10,
+  respress: 0,
+  respresscost: 200000,
+  respressmax: 12,
+  rescrit: 0,
+  rescritcost: 220000,
+  rescritmax: 12,
+  resauto: 0,
+  resautocost: 260000,
+  resautomax: 12,
+  rescombo: 0,
+  rescombocost: 240000,
+  rescombomax: 12,
+  cultfavor: 0,
+  cultfavorcost: 600000,
+  cultfavormax: 15,
+  cultregen: 0,
+  cultregencost: 700000,
+  cultregenmax: 12,
+  cultsac: 0,
+  cultsaccost: 900000,
+  cultsacmax: 10,
+  voidshard: 0,
+  voidshardcost: 3000000,
+  voidshardmax: 15,
+  voidcrit: 0,
+  voidcritcost: 3500000,
+  voidcritmax: 12,
+  voidecho: 0,
+  voidechocost: 5000000,
+  voidechomax: 10,
 };
 
 let s = Object.assign(
@@ -115,19 +154,71 @@ function fmt(n) {
 }
 
 function shardMultiplier() {
-  return 1 + s.dudeshards * 0.1;
+  return 1 + s.dudeshards * 0.1 * voidShardMultiplier();
 }
 
 function comboMultiplier() {
   return (
-    1 +
-    Math.min(comboCount, 20) * (0.02 * (1 + s.comboupgrades)) +
-    s.comboprimer * 0.01
+    (1 +
+      Math.min(comboCount, 20) * (0.02 * (1 + s.comboupgrades)) +
+      s.comboprimer * 0.01) *
+    researchComboMultiplier()
+  );
+}
+
+function ritualMultiplier() {
+  return 1 + s.ritualcandle * 0.08 + s.ritualcircle * 0.18;
+}
+
+function supplyChainMultiplier() {
+  return 1 + s.supplychain * 0.15;
+}
+
+function researchPressMultiplier() {
+  return 1 + s.respress * 0.12;
+}
+function researchCritMultiplier() {
+  return 1 + s.rescrit * 0.03;
+} // added to critchance, not multiplicative — see wiring below
+function researchAutoMultiplier() {
+  return 1 + s.resauto * 0.2;
+}
+function researchComboMultiplier() {
+  return 1 + s.rescombo * 0.02;
+} // added to combo mult, see below
+
+function cultFavorMultiplier() {
+  return 1 + s.cultfavor * 0.1;
+} // global gain
+function cultRegenMultiplier() {
+  return 1 + s.cultregen * 0.15;
+} // dude regen
+function cultSacMultiplier() {
+  return 1 + s.cultsac * 0.5;
+} // crit multiplier, big but capped low
+
+function voidShardMultiplier() {
+  return 1 + s.voidshard * 0.2;
+} // multiplies shard effect
+function voidCritMultiplier() {
+  return 1 + s.voidcrit * 0.08;
+} // crit chance flat add
+function voidEchoMultiplier() {
+  return 1 + s.voidecho * 0.25; // max +250% instead of +1000%
+}
+
+function effectiveCritChance() {
+  return Math.min(
+    0.9,
+    s.critchance + (researchCritMultiplier() - 1) + (voidCritMultiplier() - 1),
   );
 }
 
 function pressLevelEffective() {
-  return s.presslevel * (1 + s.secondpress * 0.5) + s.warmup * 0.2;
+  return (
+    (s.presslevel * (1 + s.secondpress * 0.5) + s.warmup * 0.2) *
+    researchPressMultiplier()
+  );
 }
 
 function gainPerSmash() {
@@ -136,7 +227,10 @@ function gainPerSmash() {
     (1 + s.snack * 0.05) *
     pressLevelEffective() *
     shardMultiplier() *
-    (1 + s.tokenpresstier * 0.2)
+    (1 + s.tokenpresstier * 0.2) *
+    ritualMultiplier() *
+    cultFavorMultiplier() *
+    voidEchoMultiplier()
   );
 }
 
@@ -153,7 +247,11 @@ function furnaceBonus() {
 }
 
 function autoStrength() {
-  return s.autosmashers * furnaceBonus() + s.oilcan * 0.5;
+  return (
+    (s.autosmashers * furnaceBonus() + s.oilcan * 0.5) *
+    supplyChainMultiplier() *
+    researchAutoMultiplier()
+  );
 }
 
 function shrineBonus() {
@@ -164,7 +262,8 @@ function regenPerSecond() {
   return (
     (0.6 + s.restwell * 0.05) *
     (1 + s.maxdudeupgrades * 0.1) *
-    (1 + s.academy * 0.3)
+    (1 + s.academy * 0.3) *
+    cultRegenMultiplier()
   );
 }
 
@@ -375,6 +474,44 @@ const achievements = [
       s.oilcan >= 1 &&
       s.luckycharm >= 1,
   },
+  {
+    id: "firstritual",
+    name: "ritualist",
+    desc: "buy your first ritual upgrade",
+    check: () => s.ritualcandle + s.ritualcircle + s.ritualmask >= 1,
+  },
+  {
+    id: "fivecircles",
+    name: "circle master",
+    desc: "own 5 summoning circles",
+    check: () => s.ritualcircle >= 5,
+  },
+  {
+    id: "maxresearch",
+    name: "well-read DUDE",
+    desc: "max out any research tier",
+    check: () =>
+      [s.respress, s.rescrit, s.resauto, s.rescombo].some((v) => v >= 12),
+  },
+  {
+    id: "maxcult",
+    name: "true believer",
+    desc: "max out any cult tier",
+    check: () =>
+      [s.cultfavor, s.cultregen].some((v) => v >= 12) || s.cultsac >= 10,
+  },
+  {
+    id: "firstvoid",
+    name: "void touched",
+    desc: "buy your first void upgrade",
+    check: () => s.voidshard + s.voidcrit + s.voidecho >= 1,
+  },
+  {
+    id: "maxvoidecho",
+    name: "the DUDE beyond",
+    desc: "max out void echo",
+    check: () => s.voidecho >= 10,
+  },
 ];
 
 function checkAchievements() {
@@ -411,7 +548,7 @@ function costForN(costField, growth, n) {
   let total = 0;
   let count = 0;
   if (n === "max") {
-    while (total + cost <= s.hidudes && count < 100000) {
+    while (total + cost <= s.hidudes && count < 100000 && cost > 0) {
       total += cost;
       cost = cost * growth;
       count++;
@@ -423,6 +560,52 @@ function costForN(costField, growth, n) {
     cost = cost * growth;
   }
   return { cost: Math.ceil(total), n };
+}
+
+function makeCappedTierItem({
+  id,
+  cat,
+  name,
+  descFn,
+  stateKey,
+  costKey,
+  growth,
+  maxTier,
+  mini,
+}) {
+  return {
+    id,
+    cat,
+    mini: !!mini,
+    name,
+    get desc() {
+      return descFn();
+    },
+    buy: (n) => {
+      const owned = s[stateKey];
+      if (owned >= maxTier) return;
+      const want = n === "max" ? maxTier - owned : Math.min(n, maxTier - owned);
+      if (want <= 0) return;
+      const total = costForN(costKey, growth, want);
+      if (s.hidudes < total.cost) return;
+      s.hidudes -= total.cost;
+      s[stateKey] += total.n;
+      s[costKey] = Math.ceil(s[costKey] * Math.pow(growth, total.n));
+    },
+    cost: (n) => {
+      const owned = s[stateKey];
+      if (owned >= maxTier) return Infinity;
+      const want = n === "max" ? maxTier - owned : Math.min(n, maxTier - owned);
+      return costForN(costKey, growth, want).cost;
+    },
+    label: (n) => {
+      const owned = s[stateKey];
+      if (owned >= maxTier)
+        return `${name} (MAXED, tier ${maxTier}/${maxTier})`;
+      const want = n === "max" ? maxTier - owned : Math.min(n, maxTier - owned);
+      return `${name} (tier ${owned}/${maxTier}) x${want} = ${fmt(costForN(costKey, growth, want).cost)} HI DUDE`;
+    },
+  };
 }
 
 const shopItems = [
@@ -758,7 +941,8 @@ const shopItems = [
         s.turbofurnacecost * Math.pow(3.5, total.n),
       );
     },
-    cost: (n) => costForN("turbofurnacecost", 3.5, n).cost,
+    cost: (n) =>
+      s.furnace < 1 ? Infinity : costForN("turbofurnacecost", 3.5, n).cost,
     label: (n) =>
       `turbo furnace (${s.turbofurnace} owned) x${n} = ${fmt(costForN("turbofurnacecost", 3.5, n).cost)} HI DUDE`,
   },
@@ -795,6 +979,216 @@ const shopItems = [
     label: (n) =>
       `lucky charm (${s.luckycharm} owned) x${n} = ${fmt(costForN("luckycharmcost", 1.7, n).cost)} HI DUDE`,
   },
+  {
+    id: "ritualcandlebuy",
+    cat: "ritual",
+    name: "ritual candle",
+    desc: "burns for the DUDEs. boosts all HI DUDE gain by 8% each.",
+    buy: (n) => {
+      const total = costForN("ritualcandlecost", 2.6, n);
+      if (s.hidudes < total.cost) return;
+      s.hidudes -= total.cost;
+      s.ritualcandle += total.n;
+      s.ritualcandlecost = Math.ceil(
+        s.ritualcandlecost * Math.pow(2.6, total.n),
+      );
+    },
+    cost: (n) => costForN("ritualcandlecost", 2.6, n).cost,
+    label: (n) =>
+      `ritual candle (${s.ritualcandle} owned) x${n} = ${fmt(costForN("ritualcandlecost", 2.6, n).cost)} HI DUDE`,
+  },
+  {
+    id: "ritualmaskbuy",
+    cat: "ritual",
+    mini: true,
+    name: "DUDE mask",
+    desc: "mini upgrade. wearing the mask increases crit chance slightly and is cheap.",
+    buy: (n) => {
+      const total = costForN("ritualmaskcost", 1.7, n);
+      if (s.hidudes < total.cost) return;
+      s.hidudes -= total.cost;
+      s.ritualmask += total.n;
+      s.critchance = Math.min(0.5, s.critchance + 0.008 * total.n);
+      s.ritualmaskcost = Math.ceil(s.ritualmaskcost * Math.pow(1.7, total.n));
+    },
+    cost: (n) => costForN("ritualmaskcost", 1.7, n).cost,
+    label: (n) =>
+      `DUDE mask (${s.ritualmask} owned) x${n} = ${fmt(costForN("ritualmaskcost", 1.7, n).cost)} HI DUDE`,
+  },
+  {
+    id: "ritualcirclebuy",
+    cat: "ritual",
+    name: "summoning circle",
+    desc: "expensive, powerful. boosts all HI DUDE gain by 35% each.",
+    buy: (n) => {
+      const total = costForN("ritualcirclecost", 3.2, n);
+      if (s.hidudes < total.cost) return;
+      s.hidudes -= total.cost;
+      s.ritualcircle += total.n;
+      s.ritualcirclecost = Math.ceil(
+        s.ritualcirclecost * Math.pow(3.2, total.n),
+      );
+    },
+    cost: (n) => costForN("ritualcirclecost", 3.2, n).cost,
+    label: (n) =>
+      `summoning circle (${s.ritualcircle} owned) x${n} = ${fmt(costForN("ritualcirclecost", 3.2, n).cost)} HI DUDE`,
+  },
+  {
+    id: "supplychainbuy",
+    cat: "logistics",
+    name: "supply chain",
+    desc: `streamlines DUDE logistics, +15% auto smasher output each (max tier ${10}).`,
+    buy: (n) => {
+      if (s.supplychain >= s.supplychainmaxtier) return;
+      n = Math.min(
+        n === "max" ? s.supplychainmaxtier : n,
+        s.supplychainmaxtier - s.supplychain,
+      );
+      const total = costForN("supplychaincost", 2.8, n);
+      if (s.hidudes < total.cost) return;
+      s.hidudes -= total.cost;
+      s.supplychain += total.n;
+      s.supplychaincost = Math.ceil(s.supplychaincost * Math.pow(2.8, total.n));
+    },
+    cost: (n) => {
+      if (s.supplychain >= s.supplychainmaxtier) return Infinity;
+      n = Math.min(
+        n === "max" ? s.supplychainmaxtier : n,
+        s.supplychainmaxtier - s.supplychain,
+      );
+      return costForN("supplychaincost", 2.8, n).cost;
+    },
+    label: (n) =>
+      s.supplychain >= s.supplychainmaxtier
+        ? `supply chain (MAXED, tier ${s.supplychainmaxtier}/${s.supplychainmaxtier})`
+        : `supply chain (tier ${s.supplychain}/${s.supplychainmaxtier}) x${n} = ${fmt(costForN("supplychaincost", 2.8, Math.min(n === "max" ? s.supplychainmaxtier : n, s.supplychainmaxtier - s.supplychain)).cost)} HI DUDE`,
+  },
+  {
+    ...makeCappedTierItem({
+      id: "resspressbuy",
+      cat: "research",
+      stateKey: "respress",
+      costKey: "respresscost",
+      growth: 2.4,
+      maxTier: 12,
+      name: "press theory",
+      descFn: () =>
+        `research paper on optimal smash mechanics. +12% press effectiveness per tier.`,
+    }),
+  },
+  {
+    ...makeCappedTierItem({
+      id: "rescritbuy",
+      cat: "research",
+      stateKey: "rescrit",
+      costKey: "rescritcost",
+      growth: 2.4,
+      maxTier: 12,
+      name: "crit theory",
+      descFn: () =>
+        `study of critical smash conditions. +3% crit chance per tier.`,
+    }),
+  },
+  {
+    ...makeCappedTierItem({
+      id: "resautobuy",
+      cat: "research",
+      stateKey: "resauto",
+      costKey: "resautocost",
+      growth: 2.4,
+      maxTier: 12,
+      name: "automation theory",
+      descFn: () => `robotics research. +20% auto smasher output per tier.`,
+    }),
+  },
+  {
+    ...makeCappedTierItem({
+      id: "rescombobuy",
+      cat: "research",
+      stateKey: "rescombo",
+      costKey: "rescombocost",
+      growth: 2.4,
+      maxTier: 12,
+      name: "combo theory",
+      descFn: () => `rhythm science. +2% combo multiplier per tier.`,
+    }),
+  },
+  {
+    ...makeCappedTierItem({
+      id: "cultfavorbuy",
+      cat: "cult",
+      stateKey: "cultfavor",
+      costKey: "cultfavorcost",
+      growth: 2.6,
+      maxTier: 15,
+      name: "cult favor",
+      descFn: () =>
+        `the cult smiles upon you. +10% global HI DUDE gain per tier.`,
+    }),
+  },
+  {
+    ...makeCappedTierItem({
+      id: "cultregenbuy",
+      cat: "cult",
+      stateKey: "cultregen",
+      costKey: "cultregencost",
+      growth: 2.4,
+      maxTier: 12,
+      name: "cult blessing",
+      descFn: () => `blessed DUDEs recover faster. +15% DUDE regen per tier.`,
+    }),
+  },
+  {
+    ...makeCappedTierItem({
+      id: "cultsacbuy",
+      cat: "cult",
+      stateKey: "cultsac",
+      costKey: "cultsaccost",
+      growth: 3,
+      maxTier: 10,
+      name: "DUDE sacrifice",
+      descFn: () =>
+        `dark rites. +50% crit multiplier per tier. costly and capped.`,
+    }),
+  },
+  {
+    ...makeCappedTierItem({
+      id: "voidshardbuy",
+      cat: "void",
+      stateKey: "voidshard",
+      costKey: "voidshardcost",
+      growth: 2.8,
+      maxTier: 15,
+      name: "void resonance",
+      descFn: () =>
+        `DUDE shards resonate with the void. +20% shard effectiveness per tier.`,
+    }),
+  },
+  {
+    ...makeCappedTierItem({
+      id: "voidcritbuy",
+      cat: "void",
+      stateKey: "voidcrit",
+      costKey: "voidcritcost",
+      growth: 2.6,
+      maxTier: 12,
+      name: "void sight",
+      descFn: () => `see the crit before it happens. +8% crit chance per tier.`,
+    }),
+  },
+  {
+    ...makeCappedTierItem({
+      id: "voidechobuy",
+      cat: "void",
+      stateKey: "voidecho",
+      costKey: "voidechocost",
+      growth: 3.4,
+      maxTier: 10,
+      name: "void echo",
+      descFn: () =>
+        `every smash echoes across dimensions. +100% global HI DUDE gain per tier. the endgame lever.`,
+    }),
+  },
 ];
 
 const shopCategories = [
@@ -805,6 +1199,11 @@ const shopCategories = [
   { id: "combo", label: "combo", unlockAt: 2000 },
   { id: "automation", label: "automation", unlockAt: 5000 },
   { id: "fortune", label: "fortune", unlockAt: 10000 },
+  { id: "ritual", label: "rituals", unlockAt: 25000 },
+  { id: "logistics", label: "logistics", unlockAt: 75000 },
+  { id: "research", label: "research", unlockAt: 300000 },
+  { id: "cult", label: "the cult.. ooh scary!", unlockAt: 1200000 },
+  { id: "void", label: "void studies", unlockAt: 6000000 },
 ];
 
 function checkCategoryUnlocks() {
@@ -820,6 +1219,102 @@ function checkCategoryUnlocks() {
   }
 }
 
+const treeStateKeys = {
+  resspressbuy: {
+    stateKey: "respress",
+    costKey: "respresscost",
+    growth: 2.4,
+    maxTier: 12,
+  },
+  rescritbuy: {
+    stateKey: "rescrit",
+    costKey: "rescritcost",
+    growth: 2.4,
+    maxTier: 12,
+  },
+  resautobuy: {
+    stateKey: "resauto",
+    costKey: "resautocost",
+    growth: 2.4,
+    maxTier: 12,
+  },
+  rescombobuy: {
+    stateKey: "rescombo",
+    costKey: "rescombocost",
+    growth: 2.4,
+    maxTier: 12,
+  },
+  cultfavorbuy: {
+    stateKey: "cultfavor",
+    costKey: "cultfavorcost",
+    growth: 2.6,
+    maxTier: 15,
+  },
+  cultregenbuy: {
+    stateKey: "cultregen",
+    costKey: "cultregencost",
+    growth: 2.4,
+    maxTier: 12,
+  },
+  cultsacbuy: {
+    stateKey: "cultsac",
+    costKey: "cultsaccost",
+    growth: 3,
+    maxTier: 10,
+  },
+  voidshardbuy: {
+    stateKey: "voidshard",
+    costKey: "voidshardcost",
+    growth: 2.8,
+    maxTier: 15,
+  },
+  voidcritbuy: {
+    stateKey: "voidcrit",
+    costKey: "voidcritcost",
+    growth: 2.6,
+    maxTier: 12,
+  },
+  voidechobuy: {
+    stateKey: "voidecho",
+    costKey: "voidechocost",
+    growth: 3.4,
+    maxTier: 10,
+  },
+};
+
+function renderTreeCategory(catId) {
+  const items = shopItems.filter((i) => i.cat === catId && treeStateKeys[i.id]);
+  const lines = items
+    .map((item) => {
+      const cfg = treeStateKeys[item.id];
+      const owned = s[cfg.stateKey];
+      let nodes = "";
+      for (let i = 0; i < cfg.maxTier; i++) {
+        const filled = i < owned;
+        const isNext = i === owned;
+        const cls = filled ? "filled" : isNext ? "next" : "";
+        nodes += `<div class="treenode ${cls}" data-buyitem="${isNext ? item.id : ""}" title="${item.name} tier ${i + 1}">${i + 1}</div>`;
+        if (i < cfg.maxTier - 1) nodes += `<div class="treeconnector"></div>`;
+      }
+      const costLabel =
+        owned >= cfg.maxTier
+          ? "MAXED"
+          : "next: " +
+            fmt(costForN(cfg.costKey, cfg.growth, 1).cost) +
+            " HI DUDE";
+      return `
+        <div class="treeline">
+          <div class="treelabel">${item.name}</div>
+          ${nodes}
+          <div class="treecost">${costLabel}</div>
+        </div>
+        <div style="font-size:0.85em;opacity:0.7;max-width:600px;margin:-10px 0 4px">${item.desc}</div>
+      `;
+    })
+    .join("");
+  return `<div class="treewrap">${lines}</div>`;
+}
+
 function renderShop() {
   const unlocked = shopCategories.filter(
     (cat) => s.totalhidudesever >= cat.unlockAt,
@@ -828,8 +1323,12 @@ function renderShop() {
     (cat) => s.totalhidudesever < cat.unlockAt,
   );
 
+  const treeCategories = ["research", "cult", "void"];
   const unlockedHtml = unlocked
     .map((cat) => {
+      if (treeCategories.includes(cat.id)) {
+        return `<div class="shopsection"><h3>${cat.label}</h3>${renderTreeCategory(cat.id)}</div>`;
+      }
       const items = shopItems.filter((i) => i.cat === cat.id);
       const rows = items
         .map((item) => {
@@ -855,6 +1354,17 @@ function renderShop() {
     btn.onclick = () => {
       const item = shopItems.find((i) => i.id === btn.dataset.id);
       item.buy(buymode);
+      render();
+      save();
+    };
+  });
+
+  document.querySelectorAll(".treenode.next").forEach((node) => {
+    node.onclick = () => {
+      const id = node.dataset.buyitem;
+      if (!id) return;
+      const item = shopItems.find((i) => i.id === id);
+      item.buy(1);
       render();
       save();
     };
@@ -910,8 +1420,11 @@ function renderStats() {
     ["total HI DUDE ever earned", fmt(s.totalhidudesever)],
     ["HI DUDE earned this run", fmt(s.runhidudes)],
     ["total smashes ever", fmt(s.totalsmashesever)],
-    ["current crit chance", Math.round(s.critchance * 100) + "%"],
-    ["current crit multiplier", s.critmult.toFixed(1) + "x"],
+    ["current crit chance", Math.round(effectiveCritChance() * 100) + "%"],
+    [
+      "current crit multiplier",
+      (s.critmult * cultSacMultiplier()).toFixed(1) + "x",
+    ],
     ["current combo multiplier cap", comboMultiplier().toFixed(2) + "x"],
     ["gain per smash", fmt(gainPerSmash() * glovesBonus())],
     ["DUDE regen per second", regenPerSecond().toFixed(2)],
@@ -930,7 +1443,8 @@ function renderStats() {
 function render() {
   $("dudes").textContent = fmt(s.dudes) + " / " + s.maxdudes;
   $("hidudes").textContent = fmt(s.hidudes);
-  $("rate").textContent = fmt(s.dudes * gainPerSmash() * glovesBonus());
+  $("rate").textContent =
+    fmt((autoStrength() * gainPerSmash() * glovesBonus()) / 2) + "/s";
   $("smashes").textContent = fmt(s.smashes);
   $("crits").textContent = fmt(s.crits);
   $("ascensions").textContent = s.ascensions;
@@ -990,10 +1504,10 @@ function doHi(auto) {
   let gain = gainPerSmash() * glovesBonus();
   if (!auto) gain *= comboMultiplier();
 
-  const isCrit = s.guaranteedCrit || Math.random() < s.critchance;
+  const isCrit = s.guaranteedCrit || Math.random() < effectiveCritChance();
   s.guaranteedCrit = false;
   if (isCrit) {
-    gain *= s.critmult;
+    gain *= s.critmult * cultSacMultiplier();
     s.crits++;
   }
 
@@ -1283,8 +1797,8 @@ $("dojostart").onclick = () => {
   const elapsed = (Date.now() - s.lastseen) / 1000;
   if (s.offlineEnabled && elapsed > 30) {
     const capped = Math.min(elapsed, 8 * 3600);
-    const perSec = autoStrength() * gainPerSmash() * glovesBonus() * 0.5;
-    const earned = perSec * capped * 0.5;
+    const offlineRate = autoStrength() * gainPerSmash() * glovesBonus();
+    const earned = offlineRate * capped * 0.5;
     if (earned > 0) {
       s.hidudes += earned;
       s.totalhidudesever += earned;
