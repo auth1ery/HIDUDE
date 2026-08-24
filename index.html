@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>HI DUDE</title>
+    <link rel="stylesheet" href="/src/styles.css">
+    <!--
+    Copyright (C) 2026 Ivy Lopez
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License version 2
+    as published by the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program. If not, see <https://www.gnu.org/licenses/>.
+    -->
+  </head>
+  <body>
+    <div id="game" style="position: relative">
+      <div class="sticky-top">
+        <h1>HI DUDE</h1>
+
+        <div class="stats">
+          <div class="stat-block"><b id="dudes">5</b> DUDEs</div>
+          <div class="stat-block"><b id="hidudes">0</b> HI DUDE</div>
+          <div class="stat-block"><b id="rate">0</b> HI DUDE / sec</div>
+          <div class="stat-block"><b id="smashes">0</b> smashes</div>
+          <div class="stat-block"><b id="crits">0</b> crits</div>
+          <div class="stat-block"><b id="ascensions">0</b> ascensions</div>
+          <div class="stat-block"><b id="dudeshards">0</b> DUDE shards</div>
+          <div class="stat-block"><b id="tokens">0</b> DUDE tokens</div>
+        </div>
+
+        <p id="status">you have 5 DUDEs. spend them wisely!!!!!!!!!!</p>
+        <p class="eventbar" id="eventbar"></p>
+      </div>
+
+      <div class="press" style="position: relative">
+        <pre class="pistontop piston" id="piston">
+   ___________________
+   |                 |
+   |    PRESSING     |
+   |_________________|
+        |    |
+        |    |
+        |    |</pre
+        >
+        <pre class="dudeart" id="dudeart">
+           O - im scare
+          /|\
+          / \</pre
+        >
+      </div>
+
+      <button id="hi">say HI to a DUDE (or press space)</button>
+
+      <div class="buymode">
+        buy amount:
+        <button data-n="1" class="buyn active">x1</button>
+        <button data-n="10" class="buyn">x10</button>
+        <button data-n="100" class="buyn">x100</button>
+        <button data-n="max" class="buyn">max</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tabbtn active" data-tab="shop">shop</button>
+        <button class="tabbtn" data-tab="ascend">ascension</button>
+        <button class="tabbtn" data-tab="ach">achievements</button>
+        <button class="tabbtn" data-tab="minigame">DUDE dojo</button>
+        <button class="tabbtn" data-tab="statspage">stats</button>
+        <button class="tabbtn" data-tab="settings">settings</button>
+      </div>
+
+      <div class="tabpage active" id="tab-shop">
+        <div class="shop" id="shopcontainer"></div>
+      </div>
+
+      <div class="tabpage" id="tab-ascend">
+        <p>
+          ascending resets your DUDEs, HI DUDE, and shop upgrades. in exchange
+          you get
+          <b id="shardpreview">0</b> DUDE shards, which permanently boost all HI
+          DUDE gain by 10% each.
+        </p>
+        <p>current shard bonus: <b id="shardbonus">+0%</b></p>
+        <button id="ascendbtn">ascend</button>
+
+        <p style="margin-top: 24px">
+          once you have ascended 3 times, you unlock the ability to convert DUDE
+          shards into
+          <b>DUDE tokens</b> at a rate of 5 shards per token. tokens are never
+          lost, even by converting shards. spend them in the shop on token-only
+          upgrades.
+        </p>
+        <div id="tokenconvertwrap"></div>
+      </div>
+
+      <div class="tabpage" id="tab-ach">
+        <div class="achlist" id="achcontainer"></div>
+      </div>
+
+      <div class="tabpage" id="tab-minigame">
+        <p>
+          whack the DUDEs that pop up for a small HI DUDE bonus. purely for fun,
+          does not affect your save in any permanent way besides the HI DUDE you
+          earn.
+        </p>
+        <p>dojo score: <b id="dojoscore">0</b></p>
+        <div class="minigameboard" id="dojoboard"></div>
+        <button id="dojostart">start round</button>
+      </div>
+
+      <div class="tabpage" id="tab-statspage">
+        <div class="statgrid" id="statgrid"></div>
+      </div>
+
+      <div class="tabpage" id="tab-settings">
+        <div class="settingsrow">
+          <div>offline progress: earn a portion of your rate while away.</div>
+          <button id="toggleoffline">on</button>
+        </div>
+        <div class="settingsrow">
+          <div>reduced motion: disables piston slam and squish animations.</div>
+          <button id="togglemotion">off</button>
+        </div>
+        <div class="settingsrow">
+          <div>
+            compact numbers: shows k/m/b/t suffixes instead of full numbers.
+          </div>
+          <button id="togglecompact">on</button>
+        </div>
+        <div class="settingsrow">
+          <div>
+            sticky header: keeps the top stats bar pinned in place while you
+            scroll.
+          </div>
+          <button id="togglesticky">off</button>
+        </div>
+        <div class="settingsrow">
+          <div>export save to clipboard.</div>
+          <button id="exportsave">export</button>
+        </div>
+        <div class="settingsrow">
+          <div>import save from clipboard text.</div>
+          <button id="importsave">import</button>
+        </div>
+        <div class="settingsrow">
+          <div>reset entire save.</div>
+          <button id="hardreset">reset save</button>
+        </div>
+      </div>
+
+      <p>HI DUDE</p>
+
+      <script src="/src/index.js" defer></script>
+
+    </div>
+  </body>
+</html>
